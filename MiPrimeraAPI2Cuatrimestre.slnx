@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="MiPrimeraAPI2Cuatrimestre.BLL/MiPrimeraAPI2Cuatrimestre.BLL.csproj" />
+  <Project Path="MiPrimeraAPI2Cuatrimestre.DAL/MiPrimeraAPI2Cuatrimestre.DAL.csproj" />
+  <Project Path="MiPrimeraAPI2Cuatrimestre/MiPrimeraAPI2Cuatrimestre.csproj" />
+</Solution>
