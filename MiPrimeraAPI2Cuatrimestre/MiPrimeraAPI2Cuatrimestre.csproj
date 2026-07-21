@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -12,7 +12,16 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\MiPrimeraAPI2Cuatrimestre.BLL\MiPrimeraAPI2Cuatrimestre.BLL.csproj" />
+    <ProjectReference Include="..\MiPrimeraAPI2Cuatrimestre.DAL\MiPrimeraAPI2Cuatrimestre.DAL.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Include=".github\instrucccions.md" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Controllers\" />
   </ItemGroup>
 
 </Project>

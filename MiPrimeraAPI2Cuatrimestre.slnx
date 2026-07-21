@@ -2,4 +2,5 @@
   <Project Path="MiPrimeraAPI2Cuatrimestre.BLL/MiPrimeraAPI2Cuatrimestre.BLL.csproj" />
   <Project Path="MiPrimeraAPI2Cuatrimestre.DAL/MiPrimeraAPI2Cuatrimestre.DAL.csproj" />
   <Project Path="MiPrimeraAPI2Cuatrimestre/MiPrimeraAPI2Cuatrimestre.csproj" />
+  <Project Path="MiPrimeraMinAPI2Cuatrimestre/MiPrimeraMinAPI2Cuatrimestre.csproj" Id="1579ca7d-93de-4c65-b96f-f813c8a2e1b2" />
 </Solution>

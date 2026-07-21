@@ -6,4 +6,12 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\MiPrimeraAPI2Cuatrimestre.DAL\MiPrimeraAPI2Cuatrimestre.DAL.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Modelos\" />
+  </ItemGroup>
+
 </Project>

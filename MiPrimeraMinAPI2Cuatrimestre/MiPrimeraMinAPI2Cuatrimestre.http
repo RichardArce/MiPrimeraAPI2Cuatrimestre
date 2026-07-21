@@ -1,0 +1,6 @@
+@MiPrimeraMinAPI2Cuatrimestre_HostAddress = http://localhost:5143
+
+GET {{MiPrimeraMinAPI2Cuatrimestre_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

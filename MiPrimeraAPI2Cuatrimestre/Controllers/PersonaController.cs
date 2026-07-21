@@ -1,5 +1,7 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using MiPrimeraAPI2Cuatrimestre.BLL.Dtos;
+using MiPrimeraAPI2Cuatrimestre.BLL.Servicios;
 
 namespace MiPrimeraAPI2Cuatrimestre.Controllers
 {
@@ -15,8 +17,12 @@ namespace MiPrimeraAPI2Cuatrimestre.Controllers
     [Tags("Personas")]
     public class PersonaController : ControllerBase
     {
-        //DEBERIA LLAMAR UN SERVICIO
-        public static List<string> personas = new List<string> { "Juan", "María", "Pedro" };
+        private readonly IPersonaServicio _personaServicio;
+
+        public PersonaController(IPersonaServicio personaServicio)
+        {
+            _personaServicio = personaServicio;
+        }
 
         /// <summary>
         /// Obtener todas las personas
@@ -25,147 +31,162 @@ namespace MiPrimeraAPI2Cuatrimestre.Controllers
         /// Devuelve el listado completo de todas las personas registradas en el sistema.
         /// 
         /// **Ejemplo de respuesta:**
-        /// ```
-        /// ["Juan", "María", "Pedro"]
+        /// ```json
+        /// [
+        ///   { "id": 1, "nombre": "Juan", "apellido1": "García", "edad": 30 },
+        ///   { "id": 2, "nombre": "María", "apellido1": "López", "edad": 28 }
+        /// ]
         /// ```
         /// </remarks>
         /// <returns>Lista de todas las personas</returns>
         /// <response code="200">Operación exitosa - Retorna la lista de personas</response>
         [HttpGet(Name = "GetPersonas")]
-        [ProducesResponseType(typeof(List<string>), StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetPersonas()
+        [ProducesResponseType(typeof(List<PersonaDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<List<PersonaDto>>> GetPersonas()
         {
-              return Ok(personas);
+            var personas = await _personaServicio.ObtenerTodasLasPersonasAsync();
+            return Ok(personas);
         }
 
         /// <summary>
-        /// Obtener una persona por índice
+        /// Obtener una persona por ID
         /// </summary>
         /// <remarks>
-        /// Recupera una persona específica usando su índice en la lista (basado en 0).
-        /// 
-        /// **Parámetro:**
-        /// - `id` = 0 → Retorna "Juan"
-        /// - `id` = 1 → Retorna "María"
-        /// - `id` = 2 → Retorna "Pedro"
+        /// Recupera una persona específica usando su identificador único.
         /// </remarks>
-        /// <param name="id">Índice de la persona en la lista (0-based)</param>
+        /// <param name="id">Identificador de la persona</param>
         /// <returns>La persona solicitada</returns>
         /// <response code="200">Persona encontrada</response>
-        /// <response code="404">El índice está fuera de rango</response>
+        /// <response code="404">La persona no existe</response>
         [HttpGet("{id}")]
-        [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(PersonaDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> GetPersona(int id)
+        public async Task<ActionResult<PersonaDto>> GetPersona(int id)
         {
-            return Ok(personas[id]);
+            var persona = await _personaServicio.ObtenerPersonaPorIdAsync(id);
+            
+            if (persona == null)
+            {
+                return NotFound(new { codigo = "C02", mensaje = "La persona no existe." });
+            }
+
+            return Ok(persona);
         }
 
         /// <summary>
         /// Crear nueva persona
         /// </summary>
         /// <remarks>
-        /// Agrega una nueva persona al listado del sistema.
+        /// Agrega una nueva persona al sistema.
         /// 
         /// **Ejemplo de solicitud:**
         /// ```json
-        /// "Carlos"
+        /// {
+        ///   "nombre": "Carlos",
+        ///   "apellido1": "Martínez",
+        ///   "edad": 25
+        /// }
         /// ```
         /// 
         /// **Validaciones:**
         /// - El nombre no puede estar vacío
-        /// - El nombre no puede contener solo espacios en blanco
+        /// - La edad debe ser mayor o igual a 18 años
+        /// - La edad no puede ser mayor a 120 años
         /// </remarks>
-        /// <param name="nombre">Nombre de la persona a agregar (debe no estar vacío)</param>
-        /// <returns>El nombre de la persona agregada</returns>
-        /// <response code="200">Persona agregada exitosamente</response>
-        /// <response code="400">El nombre está vacío o contiene solo espacios</response>
+        /// <param name="personaDto">Datos de la persona a crear</param>
+        /// <returns>La persona creada</returns>
+        /// <response code="201">Persona creada exitosamente</response>
+        /// <response code="400">Datos inválidos o reglas de negocio no cumplidas</response>
         [HttpPost(Name = "AgregarPersona")]
-        [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> AgregarPersona([FromBody] string nombre)
+        [ProducesResponseType(typeof(PersonaDto), StatusCodes.Status201Created)]
+        [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<PersonaDto>> AgregarPersona([FromBody] PersonaDto personaDto)
         {
-            if (string.IsNullOrWhiteSpace(nombre))
+            if (!ModelState.IsValid)
             {
-                return BadRequest("El nombre no puede estar vacío.");
+                return BadRequest(ModelState);
             }
-            personas.Add(nombre);
-            return Ok(nombre);
-        }
 
-        /// <summary>
-        /// Eliminar una persona
-        /// </summary>
-        /// <remarks>
-        /// Remueve una persona del listado usando su nombre.
-        /// 
-        /// **Ejemplo de solicitud:**
-        /// ```json
-        /// "Juan"
-        /// ```
-        /// 
-        /// **Validaciones:**
-        /// - El nombre no puede estar vacío
-        /// - La persona debe existir en el listado
-        /// </remarks>
-        /// <param name="nombre">Nombre de la persona a eliminar</param>
-        /// <returns>El nombre de la persona eliminada</returns>
-        /// <response code="200">Persona eliminada exitosamente</response>
-        /// <response code="400">El nombre está vacío o contiene solo espacios</response>
-        /// <response code="404">La persona no existe en el listado</response>
-        [HttpDelete(Name ="BorrarPersona")]
-        [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> BorrarPersona([FromBody] string nombre)
-        {
-            if (string.IsNullOrWhiteSpace(nombre))
+            var resultado = await _personaServicio.AgregarPersonaAsync(personaDto);
+
+            if (!resultado)
             {
-                return BadRequest("El nombre no puede estar vacío.");
+                return BadRequest(new { codigo="C01", mensaje = "No se puede agregar la persona. Verifique que cumpla con las reglas de negocio (edad entre 18 y 120 años)." }); //Patron de diseño  
             }
-            if (!personas.Contains(nombre))
-            {
-                return NotFound("La persona no existe.");
-            }
-            personas.Remove(nombre);
-            return Ok(nombre);
+               
+            return CreatedAtAction(nameof(GetPersona), new { id = personaDto.Id }, personaDto); // revisar
         }
 
         /// <summary>
         /// Actualizar persona existente
         /// </summary>
         /// <remarks>
-        /// Modifica el nombre de una persona en una posición específica del listado.
+        /// Modifica los datos de una persona existente.
         /// 
         /// **Ejemplo:**
-        /// - Posición: 0
-        /// - Nuevo nombre: "Miguel"
-        /// - Resultado: Reemplaza "Juan" por "Miguel"
+        /// ```json
+        /// {
+        ///   "id": 1,
+        ///   "nombre": "Miguel",
+        ///   "apellido1": "Rodríguez",
+        ///   "edad": 32
+        /// }
+        /// ```
         /// 
-        /// **Parámetros de consulta:**
-        /// - `posicion`: La posición de la persona a actualizar (0-based)
+        /// **Validaciones:**
+        /// - La edad debe ser mayor o igual a 18 años
+        /// - La edad no puede ser mayor a 120 años
         /// </remarks>
-        /// <param name="nombre">Nuevo nombre para la persona</param>
-        /// <param name="posicion">Índice de la persona a actualizar</param>
-        /// <returns>El nuevo nombre de la persona actualizada</returns>
-        /// <response code="200">Persona actualizada exitosamente</response>
-        /// <response code="400">El nombre está vacío o contiene solo espacios</response>
-        /// <response code="404">La posición está fuera de rango</response>
-        [HttpPut(Name ="ActualizarPersona")]
-        [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> ActualizarPersona([FromBody]string nombre, int posicion)
+        /// <param name="personaDto">Datos actualizados de la persona</param>
+        /// <returns>Mensaje de éxito o error</returns>
+        /// <response code="200">Persona actualizada exitosamente (incluye notificación por correo)</response>
+        /// <response code="400">Datos inválidos o reglas de negocio no cumplidas</response>
+        [HttpPut(Name = "ActualizarPersona")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> ActualizarPersona([FromBody] PersonaDto personaDto)
         {
-            personas[posicion] = nombre;
-            return Ok(nombre);
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var resultado = await _personaServicio.ActualizarPersonaAsync(personaDto);
+
+            if (!resultado)
+            {
+                return BadRequest(new { codigo = "C03", mensaje = "No se puede actualizar la persona. Verifique que cumpla con las reglas de negocio (edad entre 18 y 120 años)." });
+            }
+
+            return Ok(new { mensaje = "Persona actualizada exitosamente. Se ha enviado una notificación de cambios." });
+        }
+
+        /// <summary>
+        /// Eliminar una persona
+        /// </summary>
+        /// <remarks>
+        /// Remueve una persona del sistema usando su ID.
+        /// 
+        /// **Parámetro:**
+        /// - `id`: Identificador de la persona a eliminar
+        /// </remarks>
+        /// <param name="id">Identificador de la persona a eliminar</param>
+        /// <returns>Mensaje de éxito o error</returns>
+        /// <response code="200">Persona eliminada exitosamente</response>
+        /// <response code="404">La persona no existe</response>
+        [HttpDelete("{id}", Name = "EliminarPersona")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(object), StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> EliminarPersona(int id)
+        {
+            var resultado = await _personaServicio.EliminarPersonaAsync(id);
+
+            if (!resultado)
+            {
+                return NotFound(new { codigo = "C05", mensaje = "La persona no existe o no se pudo eliminar." });
+            }
+
+            return Ok(new { mensaje = "Persona eliminada exitosamente." });
         }
     }
 }
-
-//LAS RESPUESTAS QUE DE UN CONTROLADOR DEBEN SER CON STATUS CODES, NO CON STRING, PORQUE EL CLIENTE PUEDE INTERPRETAR EL STRING COMO UN 200 OK Y NO COMO UN ERROR.
-
-//CREAR UNA BASE DE DATOS PERSONA
-//CREAR LA MIGRACION
-//CREAR LAS CAPAS
-//INTEGRAR LAS CAPAS
