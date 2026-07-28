@@ -5,6 +5,7 @@ using Microsoft.OpenApi;
 using Scalar.AspNetCore;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -89,7 +90,8 @@ app.MapPost("/login", (LoginRequest login) =>
         new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
     };
 
-    var creds = new SigningCredentials(new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)), SecurityAlgorithms.HmacSha256);
+    var creds = new SigningCredentials(new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)), SecurityAlgorithms.HmacSha256); 
+    //SHA256 No es deterministico, es decir, cada vez que se genera un token con la misma información, el resultado es diferente. Esto es importante para la seguridad, ya que hace que sea más difícil para los atacantes predecir o reproducir tokens válidos. 
     var expiraMinutos = builder.Configuration.GetValue<int>("Jwt:ExpiraMinutos");
     var token = new JwtSecurityToken(
                     issuer: jwtIssuer,
