@@ -1,5 +1,11 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
 using Scalar.AspNetCore;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,9 +18,47 @@ builder.Services.AddOpenApi(options =>
         document.Info.Title = "API de Mascotas";
         document.Info.Version = "v1";
         document.Info.Description = "API para administrar el registro de mascotas.";
+
+        /*Documente y habilite el uso de JWT*/
+        document.Components = new OpenApiComponents();
+        document.Components.SecuritySchemes = new Dictionary<string, IOpenApiSecurityScheme>();
+        document.Components.SecuritySchemes["Bearer"] = new OpenApiSecurityScheme
+        {
+            Type = SecuritySchemeType.Http,
+            Scheme = "bearer",
+            BearerFormat = "JWT",
+            In = ParameterLocation.Header,
+            Description = "Ingrese el JWT obtenido"
+        };
+
+
         return Task.CompletedTask;
     });
 });
+
+
+var jwtKey = builder.Configuration["Jwt:Key"];
+var jwtIssuer = builder.Configuration["Jwt:Issuer"]; 
+var jwtAudience = builder.Configuration["Jwt:Audience"];
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            /*Config*/
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            /*Settings*/
+            ValidIssuer = jwtIssuer,
+            ValidAudience = jwtAudience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+        };
+    });
+
+builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
@@ -32,6 +76,41 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.MapPost("/login", (LoginRequest login) =>
+{
+    if(login.usuario != "admin" || login.contrasena != "admin")
+    {
+        return Results.Unauthorized(); 
+    }
+
+    var claims = new[]
+    {
+        new Claim(JwtRegisteredClaimNames.Sub, login.usuario),
+        new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+    };
+
+    var creds = new SigningCredentials(new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)), SecurityAlgorithms.HmacSha256);
+    var expiraMinutos = builder.Configuration.GetValue<int>("Jwt:ExpiraMinutos");
+    var token = new JwtSecurityToken(
+                    issuer: jwtIssuer,
+                    audience: jwtAudience,
+                    claims: claims,
+                    expires: DateTime.UtcNow.AddMinutes(expiraMinutos),
+                    signingCredentials:creds
+                );
+    var tokenstring = new JwtSecurityTokenHandler().WriteToken(token);
+
+
+    return Results.Ok( new { token = tokenstring });
+
+}).WithName("Login")
+  .WithTags("Auth")
+  .WithSummary("Autentica el usuario para obtener JWT");
+
+
+
+
+
 var mascotas = new List<Mascota>
 {
     new Mascota(1, "Firulais", 3, "Labrador"),
@@ -44,7 +123,7 @@ var group = app.MapGroup("/mascotas").WithTags("Mascotas");
 group.MapGet("/", () =>
 {
     return Results.Ok(mascotas);
-})
+}).RequireAuthorization()
   .WithName("GetMascotas")
   .WithSummary("Obtiene la lista de mascotas")
   .WithDescription("Devuelve todas las mascotas registradas en el sistema.")
@@ -113,4 +192,9 @@ internal record Mascota(int Id, string Nombre, int Edad, string Raza)
     public string Nombre { get; set; } = Nombre;
     public int Edad { get; set; } = Edad;
     public string Raza { get; set; } = Raza;
+}
+internal record LoginRequest(string usuario, string contrasena)
+{
+    public string usuario { get; set; } = usuario;
+    public string contrasena { get; set; } = contrasena;
 }
